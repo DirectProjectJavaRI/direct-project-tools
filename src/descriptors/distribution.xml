@@ -68,5 +68,14 @@
 			<source>src/tools/keyStoreMgr.bat</source>
 			<outputDirectory>tools/</outputDirectory>
 		</file>
+		<file>
+			<source>src/tools/configManager.sh</source>
+			<outputDirectory>tools/</outputDirectory>
+			<fileMode>777</fileMode>
+		</file>
+		<file>
+			<source>src/tools/configManager.bat</source>
+			<outputDirectory>tools/</outputDirectory>
+		</file>
   </files>
 </assembly>
