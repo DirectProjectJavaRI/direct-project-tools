@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd ">
+    <groupId>org.nhind</groupId>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>direct-project-tools</artifactId>
+    <packaging>pom</packaging>
+    <name>Direct Project Tools</name>
+    <version>9.0.0</version>
+    <description>Command line tools (certificate generation, DNS/LDAP certificate dumping, PKCS12/keystore management, policy building) built against the Direct Project Java reference implementation libraries.</description>
+    <inceptionYear>2010</inceptionYear>
+    <url>https://github.com/DirectProjectJavaRI/direct-project-tools</url>
+    <developers>
+        <developer>
+            <name>Greg Meyer</name>
+            <id>GM2552</id>
+            <email>gm2552@cerner.com</email>
+            <roles>
+                <role>owner</role>
+            </roles>
+        </developer>
+    </developers>
+    <organization>
+        <name>The Direct Project</name>
+        <url>http://nhindirect.org</url>
+    </organization>
+    <prerequisites>
+        <maven>3.5.0</maven>
+    </prerequisites>
+    <parent>
+	   <groupId>org.springframework.boot</groupId>
+	   <artifactId>spring-boot-dependencies</artifactId>
+	   <version>4.1.0</version>
+	   <relativePath />
+    </parent>
+	<scm>
+		<url>scm:git:https://github.com/DirectProjectJavaRI/direct-project-tools.git</url>
+		<connection>scm:git:https://github.com/DirectProjectJavaRI/direct-project-tools.git</connection>
+	</scm>
+    <licenses>
+       <license>
+          <name>New BSD License</name>
+          <url>http://nhindirect.org/BSDLicense</url>
+       </license>
+    </licenses>
+    <dependencies>
+	   <dependency>
+	      <groupId>org.nhind</groupId>
+	      <artifactId>agent</artifactId>
+	      <version>9.0.0</version>
+	   </dependency>
+	   <dependency>
+	      <groupId>org.nhind</groupId>
+	      <artifactId>direct-policy</artifactId>
+	      <version>9.0.0</version>
+	   </dependency>
+	   <dependency>
+	      <groupId>org.nhind</groupId>
+	      <artifactId>direct-common</artifactId>
+	      <version>9.0.0</version>
+	   </dependency>
+   </dependencies>
+   <build>
+      <extensions>
+		<extension>
+			<groupId>org.apache.maven.wagon</groupId>
+			<artifactId>wagon-webdav-jackrabbit</artifactId>
+		</extension>
+		<extension>
+			<groupId>org.apache.maven.wagon</groupId>
+			<artifactId>wagon-ssh-external</artifactId>
+		</extension>
+		<extension>
+			<groupId>org.apache.maven.wagon</groupId>
+			<artifactId>wagon-ssh</artifactId>
+		</extension>
+	  </extensions>
+	  <plugins>
+         <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <executions>
+               <execution>
+                  <id>copy-tool-dependencies</id>
+                  <phase>package</phase>
+                  <goals>
+                     <goal>copy-dependencies</goal>
+                  </goals>
+                  <configuration>
+                     <outputDirectory>${project.build.directory}/tools/lib</outputDirectory>
+                     <includeScope>runtime</includeScope>
+                     <!--
+                       direct-common pulls in a Spring WebFlux/Netty/Feign stack for its
+                       config-service REST client support, which none of these standalone
+                       CLI tools use. Exclude those trees so tools/lib stays limited to what
+                       certGen/policyBuilder/keyStoreMgr/etc. actually load at runtime.
+                     -->
+                     <excludeGroupIds>org.springframework.boot,org.springframework,org.springframework.cloud,org.springframework.retry,org.springframework.security,io.netty,io.projectreactor,io.projectreactor.netty,io.pivotal.cfenv,org.apache.httpcomponents.client5,org.apache.httpcomponents.core5,com.fasterxml.jackson.core,tools.jackson.core,io.micrometer,org.projectlombok,ch.qos.logback,org.apache.logging.log4j,org.yaml,org.reactivestreams,com.cedarsoftware</excludeGroupIds>
+                  </configuration>
+               </execution>
+               <execution>
+                  <!--
+                    config-manager is published as a self-contained executable Spring Boot
+                    jar (it bundles its own dependencies internally and is launched with
+                    "java -jar", which ignores any -classpath alongside it). Fetch just that
+                    one jar by coordinates instead of copy-dependencies, so its own compile
+                    dependency tree (another Spring/Feign stack) never gets resolved into
+                    this reactor at all.
+                  -->
+                  <id>copy-config-manager</id>
+                  <phase>package</phase>
+                  <goals>
+                     <goal>copy</goal>
+                  </goals>
+                  <configuration>
+                     <artifactItems>
+                        <artifactItem>
+                           <groupId>org.nhind</groupId>
+                           <artifactId>config-manager</artifactId>
+                           <version>9.0.0</version>
+                           <type>jar</type>
+                           <outputDirectory>${project.build.directory}/tools/lib</outputDirectory>
+                           <destFileName>config-manager.jar</destFileName>
+                        </artifactItem>
+                     </artifactItems>
+                  </configuration>
+               </execution>
+            </executions>
+         </plugin>
+         <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>3.7.1</version>
+            <executions>
+               <execution>
+                  <phase>package</phase>
+                  <goals>
+                     <goal>single</goal>
+                  </goals>
+                  <configuration>
+                     <appendAssemblyId>false</appendAssemblyId>
+                     <descriptors>
+                        <descriptor>src/descriptors/distribution.xml</descriptor>
+                     </descriptors>
+                  </configuration>
+               </execution>
+            </executions>
+         </plugin>
+		<!--  for releases only
+        <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-gpg-plugin</artifactId>
+              <executions>
+                <execution>
+                   <id>sign-artifacts</id>
+                   <phase>package</phase>
+                   <goals>
+                      <goal>sign</goal>
+                   </goals>
+                </execution>
+              </executions>
+        </plugin>
+        -->
+        <plugin>
+          <groupId>org.sonatype.central</groupId>
+          <artifactId>central-publishing-maven-plugin</artifactId>
+          <version>0.8.0</version>
+          <extensions>true</extensions>
+          <configuration>
+            <publishingServerId>central</publishingServerId>
+          </configuration>
+        </plugin>
+      </plugins>
+   </build>
+</project>
